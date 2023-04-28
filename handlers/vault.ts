@@ -9,8 +9,9 @@ import { IVault, Vault } from "../entities/vault.ts";
 import { VaultApy } from "../entities/vaultapy.ts";
 
 const VAULTS = [
-	'0x34Fe4Ba922C3f25895b1f7303d877cf153176a4C', // testNeuUSDC (tnUSDC)
-	'0xd0bBD2979743dc448D475034Cb4129AB1501cbcE', // 
+	{ addr: '0x34Fe4Ba922C3f25895b1f7303d877cf153176a4C', block: 74867950 },
+	{ addr: '0xd0bBD2979743dc448D475034Cb4129AB1501cbcE', block: 84733610 },
+	{ addr: '0x2a958665bC9A1680135241133569C7014230Cb21', block: 85083950 },
 ] as const
 
 const storeVault = async ({ block, client, store }: {
@@ -18,11 +19,12 @@ const storeVault = async ({ block, client, store }: {
 	client: PublicClient;
 	store: Store;
 }) => {
-	let vaultDetails = VAULTS.map(e => {
+	const liveVaults = VAULTS.filter(e => e.block < Number(block.number))
+	let vaultDetails = liveVaults.map(e => {
 		return {
-			address: e,
-			vault: { address: e, abi } as const,
-			contract: getContract({ address: e, abi, publicClient: client }),
+			address: e.addr,
+			vault: { address: e.addr, abi } as const,
+			contract: getContract({ address: e.addr, abi, publicClient: client }),
 			name: '',
 			symbol: ''
 		}
