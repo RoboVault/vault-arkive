@@ -9,8 +9,8 @@ import { IVault, Vault } from "../entities/vault.ts";
 import { VaultApy } from "../entities/vaultapy.ts";
 
 const VAULTS = [
-	'0x35eCeC2629CDb1070DF2f9bcaB71E967b88Ac3E0',
-	'0x321ed50B1bED49E48D2B04a3667e044d5cF019Da',
+	'0x34Fe4Ba922C3f25895b1f7303d877cf153176a4C', // testNeuUSDC (tnUSDC)
+	'0xd0bBD2979743dc448D475034Cb4129AB1501cbcE', // 
 ] as const
 
 const storeVault = async ({ block, client, store }: {
