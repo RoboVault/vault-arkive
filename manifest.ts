@@ -7,7 +7,7 @@ const manifest = new Manifest("vaults");
 
 manifest
 	.chain("arbitrum")
-	.addBlockHandler({ blockInterval: 1000, startBlockHeight: 74867950n, handler: VaultHandler })
+	.addBlockHandler({ blockInterval: 1000, startBlockHeight: 86095723n, handler: VaultHandler })
 
 export default manifest
 	.addEntities([Vault, VaultApy])
