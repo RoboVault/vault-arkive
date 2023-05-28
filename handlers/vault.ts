@@ -1,4 +1,4 @@
-import { formatUnits, getContract, stringToBytes, type PublicClient } from "npm:viem";
+import { formatUnits, getContract, type PublicClient } from "npm:viem";
 import {
 	type BlockHandler,
 	type Store,
@@ -9,8 +9,7 @@ import { IVault, Vault } from "../entities/vault.ts";
 import { VaultApy } from "../entities/vaultapy.ts";
 
 const VAULTS = [
-	'0x35eCeC2629CDb1070DF2f9bcaB71E967b88Ac3E0',
-	'0x321ed50B1bED49E48D2B04a3667e044d5cF019Da',
+	{ addr: '0x2a958665bC9A1680135241133569C7014230Cb21', block: 86095723 },
 ] as const
 
 const storeVault = async ({ block, client, store }: {
@@ -18,11 +17,12 @@ const storeVault = async ({ block, client, store }: {
 	client: PublicClient;
 	store: Store;
 }) => {
-	let vaultDetails = VAULTS.map(e => {
+	const liveVaults = VAULTS.filter(e => e.block < Number(block.number))
+	let vaultDetails = liveVaults.map(e => {
 		return {
-			address: e,
-			vault: { address: e, abi } as const,
-			contract: getContract({ address: e, abi, publicClient: client }),
+			address: e.addr,
+			vault: { address: e.addr, abi } as const,
+			contract: getContract({ address: e.addr, abi, publicClient: client }),
 			name: '',
 			symbol: ''
 		}
@@ -36,12 +36,14 @@ const storeVault = async ({ block, client, store }: {
 			symbol: await store.retrieve(`${vault.address}:symbol`, async () => await vault.contract.read.symbol())
 		}
 	}));
-
-	const sharePrices = (await client.multicall({
-		contracts: vaultDetails.map(vault => { 
-			return { ...vault.vault, functionName: 'pricePerShare' }
+	const sharePrices = (await Promise.all(vaultDetails.map(e => {
+		return client.readContract({
+			address: e.address,
+			abi,
+			functionName: 'pricePerShare',
+			blockNumber: block.number,
 		})
-	})).map(e => parseFloat(formatUnits(e.result || 0n, 6)))
+	}))).map(e => parseFloat(formatUnits(e || 0n, 6)))
 
 	const vaults = vaultDetails.map((e, i) => {
 		return {
