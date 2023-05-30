@@ -1,14 +1,15 @@
 import { Manifest } from "./deps.ts";
+import { Snapshot } from "./entities/snaphot.ts";
 import { Vault } from "./entities/vault.ts";
 import { VaultApy } from "./entities/vaultapy.ts";
 import { VaultHandler } from "./handlers/vault.ts";
 
-const manifest = new Manifest("vaults");
+const manifest = new Manifest("yieldfi-vaults");
 
 manifest
-	.chain("arbitrum")
-	.addBlockHandler({ blockInterval: 1000, startBlockHeight: 86095723n, handler: VaultHandler })
+	.chain("mumbai")
+	.addBlockHandler({ blockInterval: 150, startBlockHeight: 32887180n, handler: VaultHandler })
 
 export default manifest
-	.addEntities([Vault, VaultApy])
+	.addEntities([Vault, VaultApy, Snapshot])
 	.build();

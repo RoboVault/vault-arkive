@@ -1,4 +1,4 @@
-import { formatUnits, getContract, type PublicClient } from "npm:viem";
+import { formatUnits, getContract, type PublicClient, type Block } from "npm:viem";
 import {
 	type BlockHandler,
 	type Store,
@@ -7,10 +7,36 @@ import { SafeBlock } from "https://deno.land/x/robo_arkiver@v0.3.6/src/arkiver/t
 import abi from "../abis/vault.ts"
 import { IVault, Vault } from "../entities/vault.ts";
 import { VaultApy } from "../entities/vaultapy.ts";
+import { Snapshot } from "../entities/snaphot.ts";
+
+type VaultSnapshot = {
+    id: string;
+    block: number;
+    timestamp: number;
+    vault: string;
+    sharePrice: number;
+    name: string;
+    symbol: string;
+	apy1d: number
+	apy3d: number
+	apy7d: number
+	apy14d: number
+}
 
 const VAULTS = [
-	{ addr: '0x2a958665bC9A1680135241133569C7014230Cb21', block: 86095723 },
+	{ addr: '0x35eCeC2629CDb1070DF2f9bcaB71E967b88Ac3E0', block: 32887180 },
+	{ addr: '0x321ed50B1bED49E48D2B04a3667e044d5cF019Da', block: 32887180 },
 ] as const
+
+const HOUR = 60 * 60
+const nearestHour = (now: number) => {
+	return Math.floor(now / HOUR) * HOUR
+}
+
+const DAY = 60 * 60 * 24
+const nearestDay = (now: number) => {
+	return Math.floor(now / DAY) * DAY
+}
 
 const storeVault = async ({ block, client, store }: {
 	block: SafeBlock;
@@ -71,8 +97,8 @@ type Context = {
 	store: Store;
 }
 
-const storeAPY  = async ({ block, client, store }: Context, vaults: IVault[]) => {
-	await Promise.all(vaults.map(async vault => {
+const storeAPY  = async ({ block, client, store }: Context, vaults: IVault[]): Promise<VaultSnapshot[]> => {
+	return await Promise.all(vaults.map(async vault => {
 		const now = Number(block.timestamp)
 		const calcApy = async (vault: IVault, period: number): Promise<number> => {
 			const secondsInOneYear = 365 * 24 * 60 * 60
@@ -98,24 +124,47 @@ const storeAPY  = async ({ block, client, store }: Context, vaults: IVault[]) =>
 			calcApy(vault, 14 * day),
 		])
 
-		const doc = new VaultApy({
+		const vaultDoc = {
 			id: `${vault.vault}-${Number(block.number)}`,
 			...vault,
 			apy1d,
 			apy3d,
 			apy7d,
 			apy14d,
-		})
+		}
+		const doc = new VaultApy(vaultDoc)
 		doc.save()
+		return vaultDoc
 	}))
 }
-	
 
+const hourSnapshot = async (now: number, vaults: VaultSnapshot[]): Promise<void> => {
+	const nowHour = nearestHour(now)
+	const last = await Snapshot.findOne({ res: '1h' }).sort({ timestamp: -1 })
+	const lastHour = last?.timestamp ?? (nowHour - HOUR)
+
+	if (lastHour < nowHour) {
+		Snapshot.bulkSave(vaults.map(vault => new Snapshot({ ...vault, res: '1h', timestamp: nowHour})))
+	}
+}
+
+const daySnapshot = async (now: number, vaults: VaultSnapshot[]): Promise<void> => {
+	const nowDay = nearestDay(now)
+	const last = await Snapshot.findOne({ res: '1d' }).sort({ timestamp: -1 })
+	const lastHour = last?.timestamp ?? (nowDay - HOUR)
+
+	if (lastHour < nowDay) {
+		Snapshot.bulkSave(vaults.map(vault => new Snapshot({ ...vault, res: '1d', timestamp: nowDay})))
+	}
+}
+	
 export const VaultHandler: BlockHandler = async (ctx: {
 	block: SafeBlock;
 	client: PublicClient;
 	store: Store;
 }): Promise<void> => {
 	const vaults = await storeVault(ctx)
-	storeAPY(ctx, vaults)
+	const snapshots = await storeAPY(ctx, vaults)
+	hourSnapshot(Number(ctx.block.timestamp), snapshots)
+	daySnapshot(Number(ctx.block.timestamp), snapshots)
 };
