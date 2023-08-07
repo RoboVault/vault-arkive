@@ -26,6 +26,7 @@ type VaultSnapshot = {
 const VAULTS = [
 	{ addr: '0x35eCeC2629CDb1070DF2f9bcaB71E967b88Ac3E0', block: 32887180 },
 	{ addr: '0x321ed50B1bED49E48D2B04a3667e044d5cF019Da', block: 32887180 },
+	{ addr: '0x54Fc5db00F850F63651Bc1888bACA6657Ec6a078', block: 36510690 },
 ] as const
 
 const HOUR = 60 * 60
