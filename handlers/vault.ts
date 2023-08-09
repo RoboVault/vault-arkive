@@ -1,9 +1,8 @@
-import { formatUnits, getContract, type PublicClient } from "npm:viem";
+import { Block, formatUnits, getContract, type PublicClient } from "npm:viem";
 import {
 	type BlockHandler,
-	type Store,
-} from "https://deno.land/x/robo_arkiver@v0.3.6/mod.ts";
-import { SafeBlock } from "https://deno.land/x/robo_arkiver@v0.3.6/src/arkiver/types.ts";
+	type Store
+} from "https://deno.land/x/robo_arkiver@v0.4.21/mod.ts";
 import abi from "../abis/vault.ts"
 import { IVault, Vault } from "../entities/vault.ts";
 import { VaultApy } from "../entities/vaultapy.ts";
@@ -13,7 +12,7 @@ const VAULTS = [
 ] as const
 
 const storeVault = async ({ block, client, store }: {
-	block: SafeBlock;
+	block: Block;
 	client: PublicClient;
 	store: Store;
 }) => {
@@ -28,7 +27,6 @@ const storeVault = async ({ block, client, store }: {
 		}
 	})
 
-	// const vaults = vaultDetails.map(e => { return { address: e, abi } as const })
 	vaultDetails = await Promise.all(vaultDetails.map(async vault => {
 		return {
 			...vault,
@@ -36,37 +34,53 @@ const storeVault = async ({ block, client, store }: {
 			symbol: await store.retrieve(`${vault.address}:symbol`, async () => await vault.contract.read.symbol())
 		}
 	}));
-	const sharePrices = (await Promise.all(vaultDetails.map(e => {
-		return client.readContract({
-			address: e.address,
-			abi,
-			functionName: 'pricePerShare',
-			blockNumber: block.number,
-		})
-	}))).map(e => parseFloat(formatUnits(e || 0n, 6)))
 
+  const [sharePrices, totalSupplies] = (await Promise.all([
+    client.multicall({
+      contracts: vaultDetails.map(e => {
+        return {
+          address: e.address,
+          abi,
+          functionName: 'pricePerShare',
+        }
+      }),
+      blockNumber: block.number!,
+    }),
+    client.multicall({
+      contracts: vaultDetails.map(e => {
+        return {
+          address: e.address,
+          abi,
+          functionName: 'totalSupply',
+        }
+      }),
+      blockNumber: block.number!,
+    })
+  ])).map(func => func.map(e => formatUnits(e.result!, 6)))
+  
 	const vaults = vaultDetails.map((e, i) => {
 		return {
-			id: `${e.address}-${Number(block.number)}`,
 			block: Number(block.number),
 			timestamp: Number(block.timestamp),
 			vault: e.address,
 			sharePrice: sharePrices[i],
+      totalSupply: totalSupplies[i],
 			name: e.name,
 			symbol: e.symbol,
 		}
 	})
 	
 	vaults.forEach(doc => {
+    console.log(doc)
 		const vault = new Vault(doc)
 		vault.save()
 	})
 
-	return vaults
+	return vaults as any
 }
 
 type Context = {
-	block: SafeBlock;
+	block: Block;
 	client: PublicClient;
 	store: Store;
 }
@@ -85,8 +99,8 @@ const storeAPY  = async ({ block, client, store }: Context, vaults: IVault[]) =>
 				.exec()
 			if (!data.length || (data[0].sharePrice == undefined))
 				return 0
-
-			const { sharePrice } = data[0]._doc
+      
+			const { sharePrice } = data[0]
 			return Math.pow((vault.sharePrice / sharePrice), multiple) - 1
 		}
 
@@ -99,7 +113,6 @@ const storeAPY  = async ({ block, client, store }: Context, vaults: IVault[]) =>
 		])
 
 		const doc = new VaultApy({
-			id: `${vault.vault}-${Number(block.number)}`,
 			...vault,
 			apy1d,
 			apy3d,
@@ -112,10 +125,11 @@ const storeAPY  = async ({ block, client, store }: Context, vaults: IVault[]) =>
 	
 
 export const VaultHandler: BlockHandler = async (ctx: {
-	block: SafeBlock;
+	block: Block;
 	client: PublicClient;
 	store: Store;
 }): Promise<void> => {
+  console.log('hi')
 	const vaults = await storeVault(ctx)
 	storeAPY(ctx, vaults)
 };

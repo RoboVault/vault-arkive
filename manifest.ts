@@ -3,7 +3,7 @@ import { Vault } from "./entities/vault.ts";
 import { VaultApy } from "./entities/vaultapy.ts";
 import { VaultHandler } from "./handlers/vault.ts";
 
-const manifest = new Manifest("vaults");
+const manifest = new Manifest("vaults-test");
 
 manifest
 	.chain("arbitrum")

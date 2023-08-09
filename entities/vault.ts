@@ -9,7 +9,7 @@ export interface IVault {
 	block: number
 	timestamp: number
 	sharePrice: number
-	// totalAssets: number
+	totalAssets: number
 }
 
 export const Vault = createEntity<IVault>("Vault", {
@@ -19,5 +19,5 @@ export const Vault = createEntity<IVault>("Vault", {
 	block: { type: Number, index: true },
 	timestamp: { type: Number, index: true },
 	sharePrice: { type: Number, index: true },
-	// totalAssets: { type: Number, index: true },
+	totalAssets: { type: Number, index: true },
 });
