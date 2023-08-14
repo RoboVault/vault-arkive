@@ -1,14 +1,18 @@
-import { Manifest } from "./deps.ts";
-import { Vault } from "./entities/vault.ts";
-import { VaultApy } from "./entities/vaultapy.ts";
-import { VaultHandler } from "./handlers/vault.ts";
+import { Manifest } from './deps.ts'
+import { Vault } from './entities/vault.ts'
+import { VaultApy } from './entities/vaultapy.ts'
+import { VaultHandler } from './handlers/vault.ts'
 
-const manifest = new Manifest("vaults-test");
+const manifest = new Manifest('vaults-test')
 
 manifest
-	.chain("arbitrum")
-	.addBlockHandler({ blockInterval: 1000, startBlockHeight: 86095723n, handler: VaultHandler })
+	.addChain('arbitrum', { rpcUrl: 'https://rpc.ankr.com/arbitrum' })
+	.addBlockHandler({
+		blockInterval: 1000,
+		startBlockHeight: 86095723n,
+		handler: VaultHandler,
+	})
 
 export default manifest
 	.addEntities([Vault, VaultApy])
-	.build();
+	.build()
